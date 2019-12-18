@@ -681,7 +681,7 @@ func TestCreateImporterPod(t *testing.T) {
 	}
 
 	// create PVC
-	pvc := createPvc("testPVC2", "", nil, nil)
+	pvc := createPvc("testPVC", "", nil, nil)
 
 	resourceRequirements := createDefaultPodResourceRequirements(0, 0, 0, 0)
 
@@ -722,15 +722,16 @@ func TestMakeImporterPodSpec(t *testing.T) {
 		resourceRequirements *v1.ResourceRequirements
 	}
 	// create PVC with VolumeMode: Filesystem
-	pvc := createPvc("testPVC2", "default", nil, nil)
+	pvc := createPvc("testPVC", "default", nil, nil)
 	// create POD
 	pod := createPod(pvc, DataVolName, nil)
 
 	// create PVC with VolumeMode: Block
-	pvc1 := createBlockPvc("testPVC2", "default", nil, nil)
+	pvc1 := createBlockPvc("testPVC1", "default", nil, nil)
 	// create POD
 	pod1 := createPod(pvc1, DataVolName, nil)
 
+	//TODO createPod 함수 내부로 ?
 	resourceRequirements := createDefaultPodResourceRequirements(0, 0, 0, 0)
 	pod.Spec.Containers[0].Resources = *resourceRequirements
 	pod1.Spec.Containers[0].Resources = *resourceRequirements
@@ -757,6 +758,185 @@ func TestMakeImporterPodSpec(t *testing.T) {
 
 			if !reflect.DeepEqual(got, tt.wantPod) {
 				t.Errorf("MakeImporterPodSpec() =\n%v\n, want\n%v", got, tt.wantPod)
+			}
+
+		})
+	}
+}
+
+// TODO clonesourcepod
+func TestCreateCloneSourcePod(t *testing.T) {
+	type args struct {
+		client               kubernetes.Interface
+		image                string
+		pullPolicy           string
+		clientName           string
+		pvc                  *v1.PersistentVolumeClaim
+		resourceRequirements *v1.ResourceRequirements
+	}
+
+	// create PVC
+	pvc := createPvc("testPVC", "", nil, nil)
+
+	resourceRequirements := createDefaultPodResourceRequirements(0, 0, 0, 0)
+
+	tests := []struct {
+		name    string
+		args    args
+		want    *v1.Pod
+		wantErr bool
+	}{
+		{
+			name:    "expect pod to be created for PVC with VolumeMode Filesystem",
+			args:    args{k8sfake.NewSimpleClientset(pvc), "test/image", "Always", "clientName", pvc, resourceRequirements},
+			want:    MakeCloneSourcePodSpec("test/image", "Always", pvc.Name, "ownerRefAnno", nil, nil, nil, pvc, resourceRequirements), // TODO 얘네를 어떻게 할 것인가?
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := CreateCloneSourcePod(tt.args.client, tt.args.image, tt.args.pullPolicy, tt.args.clientName, tt.args.pvc, tt.args.resourceRequirements)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("CreateCloneSourcePod() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("CreateCloneSourcePod() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+//image, pullPolicy, sourcePvcName, ownerRefAnno string, clientKey, clientCert, serverCACert []byte, pvc *v1.PersistentVolumeClaim, resourceRequirements *v1.ResourceRequirements
+func TestMakeCloneSourcePodSpec(t *testing.T) {
+	type args struct {
+		image                string
+		pullPolicy           string
+		sourcePvcName        string
+		ownerRefAnno         string
+		clientKey            []byte
+		clientCert           []byte
+		serverCACert         []byte
+		pvc                  *v1.PersistentVolumeClaim
+		resourceRequirements *v1.ResourceRequirements
+	}
+	// create PVC with VolumeMode: Filesystem
+	pvc := createPvc("testPVC", "default", nil, nil)
+	// create POD
+	pod := createPod(pvc, DataVolName, nil)
+
+	resourceRequirements := createDefaultPodResourceRequirements(0, 0, 0, 0)
+	pod.Spec.Containers[0].Resources = *resourceRequirements
+	tests := []struct {
+		name    string
+		args    args
+		wantPod *v1.Pod
+	}{
+		{
+			name:    "TODOTODOTODOTODO", // TODO
+			args:    args{"test/myimage", "Always", pvc.Name, "ownerRefAnno", nil, nil, nil, pvc, resourceRequirements},
+			wantPod: pod,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := MakeCloneSourcePodSpec(tt.args.image, tt.args.pullPolicy, tt.args.sourcePvcName, tt.args.ownerRefAnno, tt.args.clientKey, tt.args.clientCert, tt.args.serverCACert, tt.args.pvc, tt.args.resourceRequirements)
+
+			if !reflect.DeepEqual(got, tt.wantPod) {
+				t.Errorf("MakeCloneSourcePodSpec() =\n%v\n, want\n%v", got, tt.wantPod)
+			}
+
+		})
+	}
+}
+
+// TODO uploadpod
+func TestCreateUploadPod(t *testing.T) {
+	type UploadPodArgs struct {
+		Client         kubernetes.Interface
+		Image          string
+		Verbose        string
+		PullPolicy     string
+		Name           string
+		PVC            *v1.PersistentVolumeClaim
+		ScratchPVCName string
+		ClientName     string
+	}
+
+	type args struct {
+		uploadPodArgs        UploadPodArgs
+		resourceRequirements *v1.ResourceRequirements
+	}
+
+	// create PVC
+	pvc := createPvc("testPVC", "", nil, nil)
+
+	resourceRequirements := createDefaultPodResourceRequirements(0, 0, 0, 0)
+
+	tests := []struct {
+		name    string
+		args    args
+		want    *v1.Pod
+		wantErr bool
+	}{
+		{
+			name:    "",
+			args:    args{k8sfake.NewSimpleClientset(pvc), "test/image", "Always", "clientName", pvc, resourceRequirements},
+			want:    MakeUploadPodSpec("test/image", "Always", pvc.Name, "ownerRefAnno", nil, nil, nil, pvc, resourceRequirements), // TODO 얘네를 어떻게 할 것인가?
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := TestCreateUploadPod(tt.args.client, tt.args.image, tt.args.pullPolicy, tt.args.clientName, tt.args.pvc, tt.args.resourceRequirements)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("CreateUploadPod() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("CreateUploadPod() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+//image, pullPolicy, sourcePvcName, ownerRefAnno string, clientKey, clientCert, serverCACert []byte, pvc *v1.PersistentVolumeClaim, resourceRequirements *v1.ResourceRequirements
+func TestMakeUploadPodSpec(t *testing.T) {
+	type args struct {
+		image                string
+		verbose              string
+		pullPolicy           string
+		name                 string
+		pvc                  *v1.PersistentVolumeClaim
+		scratchName          string
+		secretName           string
+		clientName           string
+		resourceRequirements *v1.ResourceRequirements
+	}
+	// create PVC with VolumeMode: Filesystem
+	pvc := createPvc("testPVC", "default", nil, nil)
+	// create POD
+	pod := createPod(pvc, DataVolName, nil)
+
+	resourceRequirements := createDefaultPodResourceRequirements(0, 0, 0, 0)
+	pod.Spec.Containers[0].Resources = *resourceRequirements
+	tests := []struct {
+		name    string
+		args    args
+		wantPod *v1.Pod
+	}{
+		{
+			name:    "TODOTODOTODOTODO", // TODO
+			args:    args{"test/myimage", "Always", pvc.Name, "ownerRefAnno", nil, nil, nil, pvc, resourceRequirements},
+			wantPod: pod,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := TestMakeUploadPodSpec(tt.args.image, tt.args.pullPolicy, tt.args.sourcePvcName, tt.args.ownerRefAnno, tt.args.clientKey, tt.args.clientCert, tt.args.serverCACert, tt.args.pvc, tt.args.resourceRequirements)
+
+			if !reflect.DeepEqual(got, tt.wantPod) {
+				t.Errorf("MakeUploadPodSpec() =\n%v\n, want\n%v", got, tt.wantPod)
 			}
 
 		})

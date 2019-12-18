@@ -481,6 +481,7 @@ func (c *UploadController) getOrCreateUploadPod(pvc *v1.PersistentVolumeClaim, p
 			return nil, err
 		}
 
+		// TODO should podResourceRequirements be in args ?
 		pod, err = CreateUploadPod(args, podResourceRequirements)
 		if err != nil {
 			return nil, err
