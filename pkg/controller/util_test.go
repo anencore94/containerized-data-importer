@@ -743,12 +743,12 @@ func TestMakeImporterPodSpec(t *testing.T) {
 	}{
 		{
 			name:    "expect pod to be created for PVC with VolumeMode: Filesystem",
-			args:    args{"test/myimage", "5", "Always", &importPodEnvVar{"", "", SourceHTTP, string(cdiv1.DataVolumeKubeVirt), "1G", "", false}, pvc, resourceRequirements},
+			args:    args{"test/myimage", "-v=5", "Always", &importPodEnvVar{"", "", SourceHTTP, string(cdiv1.DataVolumeKubeVirt), "1G", "", false}, pvc, resourceRequirements},
 			wantPod: pod,
 		},
 		{
 			name:    "expect pod to be created for PVC with VolumeMode: Block",
-			args:    args{"test/myimage", "5", "Always", &importPodEnvVar{"", "", SourceHTTP, string(cdiv1.DataVolumeKubeVirt), "1G", "", false}, pvc1, resourceRequirements},
+			args:    args{"test/myimage", "-v=5", "Always", &importPodEnvVar{"", "", SourceHTTP, string(cdiv1.DataVolumeKubeVirt), "1G", "", false}, pvc1, resourceRequirements},
 			wantPod: pod1,
 		},
 	}
@@ -789,7 +789,7 @@ func TestCreateCloneSourcePod(t *testing.T) {
 		{
 			name:    "expect pod to be created for PVC with VolumeMode Filesystem",
 			args:    args{k8sfake.NewSimpleClientset(pvc), "test/image", "Always", "clientName", pvc, resourceRequirements},
-			want:    MakeCloneSourcePodSpec("test/image", "Always", pvc.Name, "ownerRefAnno", nil, nil, nil, pvc, resourceRequirements), // TODO 얘네를 어떻게 할 것인가?
+			want:    makeUploadPodSpec("test/image","-v=5", "Always", pvc.Name,  pvc,"scratchName", "secretName", "clientName", resourceRequirements), // TODO 얘네를 어떻게 할 것인가
 			wantErr: false,
 		},
 	}
@@ -807,7 +807,6 @@ func TestCreateCloneSourcePod(t *testing.T) {
 	}
 }
 
-//image, pullPolicy, sourcePvcName, ownerRefAnno string, clientKey, clientCert, serverCACert []byte, pvc *v1.PersistentVolumeClaim, resourceRequirements *v1.ResourceRequirements
 func TestMakeCloneSourcePodSpec(t *testing.T) {
 	type args struct {
 		image                string
@@ -824,9 +823,9 @@ func TestMakeCloneSourcePodSpec(t *testing.T) {
 	pvc := createPvc("testPVC", "default", nil, nil)
 	// create POD
 	pod := createPod(pvc, DataVolName, nil)
-
 	resourceRequirements := createDefaultPodResourceRequirements(0, 0, 0, 0)
 	pod.Spec.Containers[0].Resources = *resourceRequirements
+
 	tests := []struct {
 		name    string
 		args    args
@@ -882,7 +881,7 @@ func TestCreateUploadPod(t *testing.T) {
 		{
 			name:    "",
 			args:    args{k8sfake.NewSimpleClientset(pvc), "test/image", "Always", "clientName", pvc, resourceRequirements},
-			want:    MakeUploadPodSpec("test/image", "Always", pvc.Name, "ownerRefAnno", nil, nil, nil, pvc, resourceRequirements), // TODO 얘네를 어떻게 할 것인가?
+			want:    makeUploadPodSpec("test/image", "Always", pvc.Name, "ownerRefAnno", nil, nil, nil, pvc, resourceRequirements), // TODO 얘네를 어떻게 할 것인가?
 			wantErr: false,
 		},
 	}
